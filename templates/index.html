@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Status Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; }
+        h1 { text-align: center; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #4CAF50; color: white; }
+        tr:hover { background-color: #f1f1f1; }
+        .power-cycle-button { color: red; background-color: white; border: 2px solid red; padding: 5px 10px; cursor: pointer; }
+        .power-cycle-button:hover { background-color: red; color: white; }
+    </style>
+</head>
+<body>
+    <h1>Server BMC Status</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>IP Address</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ip, status in server_statuses.items() %}
+            <tr>
+                <td>{{ ip }}</td>
+                <td>{{ status }}</td>
+                <td>
+                    <form action="{{ url_for('power_cycle', ip=ip) }}" method="get">
+                        <button class="power-cycle-button">Power Cycle</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
+
