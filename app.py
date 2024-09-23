@@ -1,65 +1,66 @@
-from flask import Flask, render_template, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for
 import subprocess
-import time
-from threading import Thread
 
-# Initialize the Flask app
 app = Flask(__name__)
 
-# List of server IP addresses
-servers = [
-    "192.168.1.100",
-    "192.168.1.101",
-    "192.168.1.102"
-]
+def load_servers(file_path):
+    servers = []
+    with open(file_path, 'r') as file:
+        for line in file.readlines():
+            try:
+                server_name, ip = line.strip().split(',')
+                servers.append((server_name, ip))
+            except ValueError:
+                print(f"Skipping malformed line in {file_path}: {line.strip()}")
+    return servers
 
-# Dictionary to store server statuses
-server_statuses = {}
-
-# Function to get power status of a server using ipmitool
-def get_server_status(server_ip):
+def get_server_status(ip):
     try:
-        # Execute the ipmitool command to get the power status of the server
-        command = f"ipmitool -I lanplus -H {server_ip} -U admin -P password chassis power status"
-        result = subprocess.check_output(command, shell=True)
-        return result.decode('utf-8').strip()
-    except subprocess.CalledProcessError:
-        return "Command not available"
+        result = subprocess.run(
+            ['ipmitool', '-I', 'lanplus', '-H', ip, '-U', 'username', '-P', 'password', 'power', 'status'],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        if result.returncode == 0:
+            return result.stdout.strip()
+        else:
+            return "Error getting status"
+    except Exception as e:
+        return f"Command not available: {e}"
 
-# Function to power cycle (restart) a server using ipmitool
-def power_cycle_server(server_ip):
+def power_cycle_server(ip, reason):
     try:
-        # Execute the ipmitool command to power cycle the server
-        command = f"ipmitool -I lanplus -H {server_ip} -U admin -P password chassis power cycle"
-        result = subprocess.check_output(command, shell=True)
-        return result.decode('utf-8').strip()
-    except subprocess.CalledProcessError:
-        return "Command not available"
+        subprocess.run(
+            ['ipmitool', '-I', 'lanplus', '-H', ip, '-U', 'username', '-P', 'password', 'power', 'cycle'],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        # Log the reason for power cycle
+        with open("power_cycle_logs.txt", "a") as log_file:
+            log_file.write(f"Power cycle initiated for {ip}. Reason: {reason}\n")
+        return "Power cycle initiated"
+    except Exception as e:
+        return f"Failed to power cycle: {e}"
 
-# Function to update server statuses every 10 minutes
-def update_server_statuses():
-    while True:
-        for ip in servers:
-            server_statuses[ip] = get_server_status(ip)
-        time.sleep(10)  # 10 minutes = 600 seconds
-
-# Start a background thread to update the server statuses every 10 minutes
-status_thread = Thread(target=update_server_statuses)
-status_thread.daemon = True
-status_thread.start()
-
-# Home route to display the server status table
 @app.route('/')
 def index():
-    return render_template('index.html', server_statuses=server_statuses)
+    servers1 = load_servers('servers1.txt')
+    servers2 = load_servers('servers2.txt')
+    servers3 = load_servers('servers3.txt')
+    servers1_status = [(server_name, ip, get_server_status(ip)) for server_name, ip in servers1]
+    servers2_status = [(server_name, ip, get_server_status(ip)) for server_name, ip in servers2]
+    servers3_status = [(server_name, ip, get_server_status(ip)) for server_name, ip in servers3]
 
-# Route to handle the power cycle action
-@app.route('/power_cycle/<ip>')
+    return render_template('index.html', servers1=servers1_status, servers2=servers2_status, servers3=servers3_status)
+
+@app.route('/power_cycle/<ip>', methods=['POST'])
 def power_cycle(ip):
-    power_cycle_server(ip)  # Power cycle the selected server
-    return redirect(url_for('index'))  # Redirect back to the homepage after the action
+    reason = request.form.get('reason')
+    status = power_cycle_server(ip, reason)
+    return redirect(url_for('index'))
 
-# Run the Flask app
 if __name__ == '__main__':
     app.run(debug=True)
 
