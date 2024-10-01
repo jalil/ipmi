@@ -3,100 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Server Status</title>
+    <title>Server Management Dashboard</title>
     <style>
         table {
-            width: 100%;
+            width: 80%;
             border-collapse: collapse;
+            margin: 20px auto;
         }
         th, td {
-            border: 1px solid black;
+            border: 1px solid #ddd;
             padding: 8px;
-            text-align: center;
+            text-align: left;
         }
-        .power-cycle {
-            color: red;
-            cursor: pointer;
+        th {
+            background-color: #f2f2f2;
         }
-        .check-status {
-            cursor: pointer;
-        }
-        .hidden {
-            display: none;
+        .button {
+            padding: 5px 10px;
+            margin: 5px;
         }
     </style>
-    <script>
-        // Function to check BMC status and update it in real-time
-        function checkBmcStatus(bmc_ip, elementId) {
-            fetch(`/check_bmc_status/${bmc_ip}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById(elementId).innerText = data.status;
-            });
-        }
-
-        // Function to show the reason text area when power cycle button is clicked
-        function showReasonText(bmc_ip) {
-            let reasonArea = document.getElementById(`reason-${bmc_ip}`);
-            reasonArea.classList.toggle('hidden');
-        }
-
-        // Function to power cycle the server
-        function powerCycle(bmc_ip) {
-            let reason = document.getElementById(`reason-input-${bmc_ip}`).value;
-            fetch(`/power_cycle/${bmc_ip}`, {
-                method: 'POST',
-                body: JSON.stringify({ reason: reason }),
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                alert(data.result);
-            });
-        }
-    </script>
 </head>
 <body>
-    <h1>Server Group 1 Status</h1>
+    <h1>Server Management Dashboard</h1>
+
+    <h2>BMC Status</h2>
     <table>
         <tr>
             <th>Server Name</th>
             <th>BMC IP</th>
-            <th>BMC Status</th>
-            <th>Kubernetes IP</th>
-            <th>Kubelet Status</th>
-            <th>Actions</th>
+            <th>Status</th>
+            <th>Power Cycle Reason</th>
+            <th>Action</th>
         </tr>
         {% for server in servers_group1 %}
         <tr>
             <td>{{ server[0] }}</td>
             <td>{{ server[1] }}</td>
-            <td id="bmc-status-{{ server[1] }}">{{ server[3] }}</td>
-            <td>{{ server[2] }}</td>
-            <td>{{ server[4] }}</td>
+            <td>{{ server[3] }}</td>
             <td>
-                <!-- Power Cycle -->
-                <button class="power-cycle" onclick="showReasonText('{{ server[1] }}')">Power Cycle</button>
-                <div id="reason-{{ server[1] }}" class="hidden">
-                    <textarea id="reason-input-{{ server[1] }}" placeholder="Enter reason..."></textarea>
-                    <button onclick="powerCycle('{{ server[1] }}')">Submit</button>
-                </div>
-                
-                <!-- Check BMC Status -->
-                <button class="check-status" onclick="checkBmcStatus('{{ server[1] }}', 'bmc-status-{{ server[1] }}')">Check BMC Status</button>
+                <form action="{{ url_for('power_cycle', bmc_ip=server[1]) }}" method="POST">
+                    <!-- Dropdown list for selecting the reason for the power cycle -->
+                    <select name="reason">
+                        <option value="Host cannot be reached">Host cannot be reached</option>
+                        <option value="Cannot SSH into host">Cannot SSH into host</option>
+                        <option value="Hardware failure">Hardware failure</option>
+                        <option value="Scheduled maintenance">Scheduled maintenance</option>
+                        <option value="Other">Other</option>
+                    </select>
+                    <button type="submit" class="button">Power Cycle</button>
+                </form>
             </td>
         </tr>
         {% endfor %}
     </table>
-
-    <!-- Similarly, create tables for servers_group2 and servers_group3 -->
 </body>
 </html>
 
