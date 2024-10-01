@@ -10,85 +10,93 @@
             border-collapse: collapse;
         }
         th, td {
+            border: 1px solid black;
             padding: 8px;
-            text-align: left;
-            border: 1px solid #ddd;
-        }
-        th {
-            background-color: #f2f2f2;
+            text-align: center;
         }
         .power-cycle {
             color: red;
+            cursor: pointer;
+        }
+        .check-status {
+            cursor: pointer;
+        }
+        .hidden {
+            display: none;
         }
     </style>
-</head>
-<body>
-    <h1>Server Status for Server Group 1</h1>
-    <table>
-        <tr>
-            <th>Server Name</th>
-            <th>BMC IP</th>
-            <th>BMC Status</th>
-            <th>Kubernetes IP</th>
-            <th>Kubelet Status</th>
-            <th>Action</th>
-        </tr>
-        {% for server in group1_statuses %}
-        <tr>
-            <td>{{ server.server_name }}</td>
-            <td>{{ server.bmc_server_ip }}</td>
-            <td>{{ server.bmc_status }}</td>
-            <td>{{ server.kubernetes_server_ip }}</td>
-            <td>{{ server.kubelet_status }}</td>
-            <td>
-                <form action="/power_cycle/{{ server.server_name }}/{{ server.bmc_server_ip }}" method="post">
-                    <button type="button" class="power-cycle" onclick="showReasonForm('{{ server.server_name }}')">Power Cycle</button>
-                    <div id="reason-form-{{ server.server_name }}" style="display:none;">
-                        <textarea name="reason" placeholder="Enter reason for power cycle"></textarea>
-                        <button type="submit">Submit</button>
-                    </div>
-                </form>
-            </td>
-        </tr>
-        {% endfor %}
-    </table>
-
-    <h1>Server Status for Server Group 2</h1>
-    <table>
-        <tr>
-            <th>Server Name</th>
-            <th>BMC IP</th>
-            <th>BMC Status</th>
-            <th>Kubernetes IP</th>
-            <th>Kubelet Status</th>
-            <th>Action</th>
-        </tr>
-        {% for server in group2_statuses %}
-        <tr>
-            <td>{{ server.server_name }}</td>
-            <td>{{ server.bmc_server_ip }}</td>
-            <td>{{ server.bmc_status }}</td>
-            <td>{{ server.kubernetes_server_ip }}</td>
-            <td>{{ server.kubelet_status }}</td>
-            <td>
-                <form action="/power_cycle/{{ server.server_name }}/{{ server.bmc_server_ip }}" method="post">
-                    <button type="button" class="power-cycle" onclick="showReasonForm('{{ server.server_name }}')">Power Cycle</button>
-                    <div id="reason-form-{{ server.server_name }}" style="display:none;">
-                        <textarea name="reason" placeholder="Enter reason for power cycle"></textarea>
-                        <button type="submit">Submit</button>
-                    </div>
-                </form>
-            </td>
-        </tr>
-        {% endfor %}
-    </table>
-
     <script>
-        function showReasonForm(serverName) {
-            var form = document.getElementById('reason-form-' + serverName);
-            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        // Function to check BMC status and update it in real-time
+        function checkBmcStatus(bmc_ip, elementId) {
+            fetch(`/check_bmc_status/${bmc_ip}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById(elementId).innerText = data.status;
+            });
+        }
+
+        // Function to show the reason text area when power cycle button is clicked
+        function showReasonText(bmc_ip) {
+            let reasonArea = document.getElementById(`reason-${bmc_ip}`);
+            reasonArea.classList.toggle('hidden');
+        }
+
+        // Function to power cycle the server
+        function powerCycle(bmc_ip) {
+            let reason = document.getElementById(`reason-input-${bmc_ip}`).value;
+            fetch(`/power_cycle/${bmc_ip}`, {
+                method: 'POST',
+                body: JSON.stringify({ reason: reason }),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.result);
+            });
         }
     </script>
+</head>
+<body>
+    <h1>Server Group 1 Status</h1>
+    <table>
+        <tr>
+            <th>Server Name</th>
+            <th>BMC IP</th>
+            <th>BMC Status</th>
+            <th>Kubernetes IP</th>
+            <th>Kubelet Status</th>
+            <th>Actions</th>
+        </tr>
+        {% for server in servers_group1 %}
+        <tr>
+            <td>{{ server[0] }}</td>
+            <td>{{ server[1] }}</td>
+            <td id="bmc-status-{{ server[1] }}">{{ server[3] }}</td>
+            <td>{{ server[2] }}</td>
+            <td>{{ server[4] }}</td>
+            <td>
+                <!-- Power Cycle -->
+                <button class="power-cycle" onclick="showReasonText('{{ server[1] }}')">Power Cycle</button>
+                <div id="reason-{{ server[1] }}" class="hidden">
+                    <textarea id="reason-input-{{ server[1] }}" placeholder="Enter reason..."></textarea>
+                    <button onclick="powerCycle('{{ server[1] }}')">Submit</button>
+                </div>
+                
+                <!-- Check BMC Status -->
+                <button class="check-status" onclick="checkBmcStatus('{{ server[1] }}', 'bmc-status-{{ server[1] }}')">Check BMC Status</button>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <!-- Similarly, create tables for servers_group2 and servers_group3 -->
 </body>
 </html>
 
