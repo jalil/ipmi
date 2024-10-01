@@ -1,9 +1,50 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, redirect, url_for, g
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
 import paramiko
+from flask_sqlalchemy import SQLAlchemy
+from functools import wraps
+from flask import request, Response
 
 app = Flask(__name__)
+
+# Configure the SQLite database
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///power_cycles.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+
+# Define a model for storing power cycle actions
+class PowerCycleAction(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    bmc_ip = db.Column(db.String(50), nullable=False)
+    reason = db.Column(db.String(200), nullable=False)
+    username = db.Column(db.String(50), nullable=False)
+
+# Initialize the database
+with app.app_context():
+    db.create_all()
+
+# Basic Auth decorator
+def check_auth(username, password):
+    return username == 'admin' and password == 'admin'
+
+def authenticate():
+    """Sends a 401 response that enables basic auth"""
+    return Response(
+        'Could not verify your login!\n'
+        'You have to login with proper credentials', 401,
+        {'WWW-Authenticate': 'Basic realm="Login Required"'})
+
+def requires_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth = request.authorization
+        if not auth or not check_auth(auth.username, auth.password):
+            return authenticate()
+        g.username = auth.username  # Store the authenticated user's username in `g`
+        return f(*args, **kwargs)
+    return decorated
 
 # Load servers from the server list files (one for each group)
 def load_servers(file_path):
@@ -38,10 +79,8 @@ def check_kubelet_status(kube_ip):
         return f'Error: {e}'
 
 # Function to power cycle the server
-def power_cycle_server(bmc_ip, reason=None):
+def power_cycle_server(bmc_ip):
     try:
-        if reason:
-            print(f"Power cycling server with BMC IP {bmc_ip}. Reason: {reason}")
         subprocess.run(['ipmitool', '-I', 'lanplus', '-H', bmc_ip, '-U', 'admin', '-P', 'password', 'chassis', 'power', 'cycle'], capture_output=True, text=True)
         return "Power cycle initiated"
     except Exception as e:
@@ -59,16 +98,24 @@ def check_kubelet_status_route(kube_ip):
     status = check_kubelet_status(kube_ip)
     return jsonify({'status': status})
 
-# Route to power cycle the server and provide a reason
+# Route to power cycle the server and provide a reason, saving to the database
 @app.route('/power_cycle/<bmc_ip>', methods=['POST'])
+@requires_auth
 def power_cycle(bmc_ip):
-    reason = request.form.get('reason')
-    print(f"Power cycling server with BMC IP: {bmc_ip}. Reason: {reason}")
-    result = power_cycle_server(bmc_ip, reason)
-    return jsonify({'result': result, 'reason': reason})
+    reason = request.form.get('reason')  # Get reason from the form
+    username = g.username  # Get the authenticated username from `g`
+
+    # Save the reason and username to the SQLite database
+    new_action = PowerCycleAction(bmc_ip=bmc_ip, reason=reason, username=username)
+    db.session.add(new_action)
+    db.session.commit()
+
+    result = power_cycle_server(bmc_ip)  # Power cycle the server
+    return jsonify({'result': result, 'reason': reason, 'username': username})
 
 # Homepage route that loads and displays the server statuses
 @app.route('/')
+@requires_auth
 def index():
     servers_group1 = load_servers('servers_group1.txt')
     servers_group2 = load_servers('servers_group2.txt')
