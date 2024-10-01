@@ -1,92 +1,78 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, jsonify, redirect, url_for
 import subprocess
-import paramiko
-import csv
-import os
 from concurrent.futures import ThreadPoolExecutor
+import paramiko
 
 app = Flask(__name__)
 
-# Helper function to read server lists
-def read_server_list(filename):
-    servers = []
-    with open(filename, 'r') as file:
-        reader = csv.reader(file)
-        for row in reader:
-            if len(row) == 3:  # Ensure correct number of values in each row
-                servers.append({
-                    'server_name': row[0],
-                    'bmc_server_ip': row[1],
-                    'kubernetes_server_ip': row[2]
-                })
+# Load servers from the server list files (one for each group)
+def load_servers(file_path):
+    with open(file_path) as file:
+        servers = [line.strip().split(',') for line in file]
     return servers
 
-# Function to check BMC status using ipmitool
-def get_server_status(server_name, bmc_server_ip):
+# Function to get the BMC status using ipmitool
+def get_bmc_status(bmc_ip):
     try:
-        status = subprocess.check_output(
-            ["ipmitool", "-I", "lanplus", "-H", bmc_server_ip, "-U", "admin", "-P", "password", "chassis", "power", "status"],
-            stderr=subprocess.STDOUT
-        ).decode('utf-8')
-        return status.strip().replace('Chassis Power is ', '')  # Simplified to 'on' or 'off'
-    except subprocess.CalledProcessError:
-        return 'Command failed'
+        result = subprocess.run(['ipmitool', '-I', 'lanplus', '-H', bmc_ip, '-U', 'admin', '-P', 'password', 'chassis', 'power', 'status'], capture_output=True, text=True)
+        if 'on' in result.stdout:
+            return 'On'
+        elif 'off' in result.stdout:
+            return 'Off'
+        else:
+            return 'Unknown'
+    except Exception as e:
+        return f'Error: {e}'
 
-# Function to check if kubelet is running on Kubernetes server
-def check_kubelet_status(kubernetes_server_ip):
+# Function to check if kubelet is running on a given Kubernetes IP
+def check_kubelet_status(kube_ip):
     try:
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(kubernetes_server_ip, username='root', password='password')
-
-        stdin, stdout, stderr = ssh.exec_command("systemctl is-active kubelet")
-        status = stdout.read().decode().strip()
+        ssh.connect(kube_ip, username='user', password='password')
+        stdin, stdout, stderr = ssh.exec_command('systemctl is-active kubelet')
+        kubelet_status = stdout.read().decode().strip()
         ssh.close()
+        return "active" if kubelet_status == "active" else "inactive"
+    except Exception as e:
+        return f'Error: {e}'
 
-        if status == 'active':
-            return 'Running'
-        else:
-            return 'Not running'
-    except paramiko.SSHException:
-        return 'SSH failed'
+# Function to power cycle the server
+def power_cycle_server(bmc_ip):
+    try:
+        subprocess.run(['ipmitool', '-I', 'lanplus', '-H', bmc_ip, '-U', 'admin', '-P', 'password', 'chassis', 'power', 'cycle'], capture_output=True, text=True)
+        return "Power cycle initiated"
+    except Exception as e:
+        return f'Error: {e}'
 
-# Wrapper function for asynchronous status checks
-def check_status(server):
-    bmc_status = get_server_status(server['server_name'], server['bmc_server_ip'])
-    kubelet_status = check_kubelet_status(server['kubernetes_server_ip'])
-    return {
-        'server_name': server['server_name'],
-        'bmc_server_ip': server['bmc_server_ip'],
-        'kubernetes_server_ip': server['kubernetes_server_ip'],
-        'bmc_status': bmc_status,
-        'kubelet_status': kubelet_status
-    }
+# Route to fetch BMC status dynamically
+@app.route('/check_bmc_status/<bmc_ip>', methods=['POST'])
+def check_bmc_status(bmc_ip):
+    status = get_bmc_status(bmc_ip)
+    return jsonify({'status': status})
 
+# Route to power cycle the server and provide a reason
+@app.route('/power_cycle/<bmc_ip>', methods=['POST'])
+def power_cycle(bmc_ip):
+    reason = request.form.get('reason')
+    result = power_cycle_server(bmc_ip)
+    return jsonify({'result': result})
+
+# Homepage route that loads and displays the server statuses
 @app.route('/')
 def index():
-    # Load server lists
-    servers_group1 = read_server_list('servers_group1.txt')
-    servers_group2 = read_server_list('servers_group2.txt')
+    servers_group1 = load_servers('servers_group1.txt')
+    servers_group2 = load_servers('servers_group2.txt')
+    servers_group3 = load_servers('servers_group3.txt')
 
-    # Use ThreadPoolExecutor for concurrent status checks
+    # Use ThreadPoolExecutor to run BMC and kubelet checks concurrently
     with ThreadPoolExecutor() as executor:
-        group1_statuses = list(executor.map(check_status, servers_group1))
-        group2_statuses = list(executor.map(check_status, servers_group2))
+        for server in servers_group1 + servers_group2 + servers_group3:
+            server_name, bmc_ip, kube_ip = server
+            server.append(executor.submit(get_bmc_status, bmc_ip).result())
+            server.append(executor.submit(check_kubelet_status, kube_ip).result())
 
-    return render_template('index.html', group1_statuses=group1_statuses, group2_statuses=group2_statuses)
-
-# Power cycle function (Example only)
-@app.route('/power_cycle/<server_name>/<bmc_server_ip>', methods=['POST'])
-def power_cycle(server_name, bmc_server_ip):
-    reason = request.form.get('reason')  # Get reason from textarea input
-    try:
-        subprocess.check_output(
-            ["ipmitool", "-I", "lanplus", "-H", bmc_server_ip, "-U", "admin", "-P", "password", "chassis", "power", "cycle"],
-            stderr=subprocess.STDOUT
-        ).decode('utf-8')
-        return redirect(url_for('index'))
-    except subprocess.CalledProcessError:
-        return "Failed to power cycle", 500
+    return render_template('index.html', servers_group1=servers_group1, servers_group2=servers_group2, servers_group3=servers_group3)
 
 if __name__ == '__main__':
     app.run(debug=True)

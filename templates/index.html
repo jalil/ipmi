@@ -9,54 +9,45 @@
             width: 100%;
             border-collapse: collapse;
         }
-        table, th, td {
-            border: 1px solid black;
-        }
         th, td {
             padding: 8px;
             text-align: left;
+            border: 1px solid #ddd;
         }
-        .power-cycle-btn {
+        th {
+            background-color: #f2f2f2;
+        }
+        .power-cycle {
             color: red;
-            cursor: pointer;
-        }
-        .hidden {
-            display: none;
         }
     </style>
-    <script>
-        function showReasonInput(serverId) {
-            const reasonDiv = document.getElementById('reason-' + serverId);
-            if (reasonDiv.classList.contains('hidden')) {
-                reasonDiv.classList.remove('hidden');
-            } else {
-                reasonDiv.classList.add('hidden');
-            }
-        }
-    </script>
 </head>
 <body>
     <h1>Server Status for Server Group 1</h1>
     <table>
         <tr>
             <th>Server Name</th>
-            <th>IP Address</th>
-            <th>Status</th>
+            <th>BMC IP</th>
+            <th>BMC Status</th>
+            <th>Kubernetes IP</th>
+            <th>Kubelet Status</th>
             <th>Action</th>
         </tr>
-        {% for server_name, ip, status in servers1 %}
+        {% for server in group1_statuses %}
         <tr>
-            <td>{{ server_name }}</td>
-            <td>{{ ip }}</td>
-            <td>{{ status }}</td>
+            <td>{{ server.server_name }}</td>
+            <td>{{ server.bmc_server_ip }}</td>
+            <td>{{ server.bmc_status }}</td>
+            <td>{{ server.kubernetes_server_ip }}</td>
+            <td>{{ server.kubelet_status }}</td>
             <td>
-                <button class="power-cycle-btn" onclick="showReasonInput('{{ loop.index }}')">Power Cycle</button>
-                <div id="reason-{{ loop.index }}" class="hidden">
-                    <form action="/power_cycle/{{ ip }}" method="POST">
-                        <textarea name="reason" rows="4" cols="50" placeholder="Enter reason for power cycle"></textarea><br>
-                        <input type="submit" value="Submit">
-                    </form>
-                </div>
+                <form action="/power_cycle/{{ server.server_name }}/{{ server.bmc_server_ip }}" method="post">
+                    <button type="button" class="power-cycle" onclick="showReasonForm('{{ server.server_name }}')">Power Cycle</button>
+                    <div id="reason-form-{{ server.server_name }}" style="display:none;">
+                        <textarea name="reason" placeholder="Enter reason for power cycle"></textarea>
+                        <button type="submit">Submit</button>
+                    </div>
+                </form>
             </td>
         </tr>
         {% endfor %}
@@ -66,54 +57,38 @@
     <table>
         <tr>
             <th>Server Name</th>
-            <th>IP Address</th>
-            <th>Status</th>
+            <th>BMC IP</th>
+            <th>BMC Status</th>
+            <th>Kubernetes IP</th>
+            <th>Kubelet Status</th>
             <th>Action</th>
         </tr>
-        {% for server_name, ip, status in servers2 %}
+        {% for server in group2_statuses %}
         <tr>
-            <td>{{ server_name }}</td>
-            <td>{{ ip }}</td>
-            <td>{{ status }}</td>
+            <td>{{ server.server_name }}</td>
+            <td>{{ server.bmc_server_ip }}</td>
+            <td>{{ server.bmc_status }}</td>
+            <td>{{ server.kubernetes_server_ip }}</td>
+            <td>{{ server.kubelet_status }}</td>
             <td>
-                <button class="power-cycle-btn" onclick="showReasonInput('group2-{{ loop.index }}')">Power Cycle</button>
-                <div id="reason-group2-{{ loop.index }}" class="hidden">
-                    <form action="/power_cycle/{{ ip }}" method="POST">
-                        <textarea name="reason" rows="4" cols="50" placeholder="Enter reason for power cycle"></textarea><br>
-                        <input type="submit" value="Submit">
-                    </form>
-                </div>
+                <form action="/power_cycle/{{ server.server_name }}/{{ server.bmc_server_ip }}" method="post">
+                    <button type="button" class="power-cycle" onclick="showReasonForm('{{ server.server_name }}')">Power Cycle</button>
+                    <div id="reason-form-{{ server.server_name }}" style="display:none;">
+                        <textarea name="reason" placeholder="Enter reason for power cycle"></textarea>
+                        <button type="submit">Submit</button>
+                    </div>
+                </form>
             </td>
         </tr>
         {% endfor %}
     </table>
 
-    <h1>Server Status for Server Group 3</h1>
-    <table>
-        <tr>
-            <th>Server Name</th>
-            <th>IP Address</th>
-            <th>Status</th>
-            <th>Action</th>
-        </tr>
-        {% for server_name, ip, status in servers3 %}
-        <tr>
-            <td>{{ server_name }}</td>
-            <td>{{ ip }}</td>
-            <td>{{ status }}</td>
-            <td>
-                <button class="power-cycle-btn" onclick="showReasonInput('group3-{{ loop.index }}')">Power Cycle</button>
-                <div id="reason-group3-{{ loop.index }}" class="hidden">
-                    <form action="/power_cycle/{{ ip }}" method="POST">
-                        <textarea name="reason" rows="4" cols="50" placeholder="Enter reason for power cycle"></textarea><br>
-                        <input type="submit" value="Submit">
-                    </form>
-                </div>
-            </td>
-        </tr>
-        {% endfor %}
-    </table>
+    <script>
+        function showReasonForm(serverName) {
+            var form = document.getElementById('reason-form-' + serverName);
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        }
+    </script>
 </body>
 </html>
-
 
