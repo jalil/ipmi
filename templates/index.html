@@ -4,59 +4,124 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Server Management Dashboard</title>
-    <style>
-        table {
-            width: 80%;
-            border-collapse: collapse;
-            margin: 20px auto;
-        }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-        th {
-            background-color: #f2f2f2;
-        }
-        .button {
-            padding: 5px 10px;
-            margin: 5px;
-        }
-    </style>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 </head>
 <body>
-    <h1>Server Management Dashboard</h1>
+    <div class="container">
+        <h1 class="mt-5">Server Management Dashboard</h1>
 
-    <h2>BMC Status</h2>
-    <table>
-        <tr>
-            <th>Server Name</th>
-            <th>BMC IP</th>
-            <th>Status</th>
-            <th>Power Cycle Reason</th>
-            <th>Action</th>
-        </tr>
-        {% for server in servers_group1 %}
-        <tr>
-            <td>{{ server[0] }}</td>
-            <td>{{ server[1] }}</td>
-            <td>{{ server[3] }}</td>
-            <td>
-                <form action="{{ url_for('power_cycle', bmc_ip=server[1]) }}" method="POST">
-                    <!-- Dropdown list for selecting the reason for the power cycle -->
-                    <select name="reason">
-                        <option value="Host cannot be reached">Host cannot be reached</option>
-                        <option value="Cannot SSH into host">Cannot SSH into host</option>
-                        <option value="Hardware failure">Hardware failure</option>
-                        <option value="Scheduled maintenance">Scheduled maintenance</option>
-                        <option value="Other">Other</option>
-                    </select>
-                    <button type="submit" class="button">Power Cycle</button>
-                </form>
-            </td>
-        </tr>
-        {% endfor %}
-    </table>
+        <h2 class="mt-4">Servers Group 1</h2>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Server Name</th>
+                    <th>BMC IP</th>
+                    <th>Kubelet IP</th>
+                    <th>BMC Status</th>
+                    <th>Kubelet Status</th>
+                    <th>Power Cycle</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for server in servers_group1 %}
+                <tr>
+                    <td>{{ server[0] }}</td>
+                    <td>{{ server[1] }}</td>
+                    <td>{{ server[2] }}</td>
+                    <td>{{ server[3] }}</td>
+                    <td>{{ server[4] }}</td>
+                    <td>
+                        <form method="POST" action="{{ url_for('power_cycle', bmc_ip=server[1]) }}">
+                            <select name="reason" required>
+                                <option value="">Select a reason</option>
+                                <option value="Host can't be reached">Host can't be reached</option>
+                                <option value="Can't SSH into host">Can't SSH into host</option>
+                                <!-- Add more reasons as needed -->
+                            </select>
+                            <button type="submit" class="btn btn-warning btn-sm">Power Cycle</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h2 class="mt-4">Servers Group 2</h2>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Server Name</th>
+                    <th>BMC IP</th>
+                    <th>Kubelet IP</th>
+                    <th>BMC Status</th>
+                    <th>Kubelet Status</th>
+                    <th>Power Cycle</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for server in servers_group2 %}
+                <tr>
+                    <td>{{ server[0] }}</td>
+                    <td>{{ server[1] }}</td>
+                    <td>{{ server[2] }}</td>
+                    <td>{{ server[3] }}</td>
+                    <td>{{ server[4] }}</td>
+                    <td>
+                        <form method="POST" action="{{ url_for('power_cycle', bmc_ip=server[1]) }}">
+                            <select name="reason" required>
+                                <option value="">Select a reason</option>
+                                <option value="Host can't be reached">Host can't be reached</option>
+                                <option value="Can't SSH into host">Can't SSH into host</option>
+                                <!-- Add more reasons as needed -->
+                            </select>
+                            <button type="submit" class="btn btn-warning btn-sm">Power Cycle</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h2 class="mt-4">Servers Group 3</h2>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Server Name</th>
+                    <th>BMC IP</th>
+                    <th>Kubelet IP</th>
+                    <th>BMC Status</th>
+                    <th>Kubelet Status</th>
+                    <th>Power Cycle</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for server in servers_group3 %}
+                <tr>
+                    <td>{{ server[0] }}</td>
+                    <td>{{ server[1] }}</td>
+                    <td>{{ server[2] }}</td>
+                    <td>{{ server[3] }}</td>
+                    <td>{{ server[4] }}</td>
+                    <td>
+                        <form method="POST" action="{{ url_for('power_cycle', bmc_ip=server[1]) }}">
+                            <select name="reason" required>
+                                <option value="">Select a reason</option>
+                                <option value="Host can't be reached">Host can't be reached</option>
+                                <option value="Can't SSH into host">Can't SSH into host</option>
+                                <!-- Add more reasons as needed -->
+                            </select>
+                            <button type="submit" class="btn btn-warning btn-sm">Power Cycle</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>
 </html>
 

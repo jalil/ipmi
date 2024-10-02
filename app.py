@@ -1,64 +1,55 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, g
+from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask_sqlalchemy import SQLAlchemy
+from flask_httpauth import HTTPBasicAuth
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
 import paramiko
-from flask_sqlalchemy import SQLAlchemy
-from functools import wraps
-from flask import request, Response
 
 app = Flask(__name__)
 
-# Configure the SQLite database
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///power_cycles.db'
+# PostgreSQL Configuration
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://admin:admin@localhost/server_dashboard'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
 db = SQLAlchemy(app)
+auth = HTTPBasicAuth()
 
-# Define a model for storing power cycle actions
-class PowerCycleAction(db.Model):
+# In-memory dictionary for basic auth
+users = {
+    "admin": "admin"
+}
+
+# Model for saving power cycle logs
+class PowerCycleLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    bmc_ip = db.Column(db.String(50), nullable=False)
-    reason = db.Column(db.String(200), nullable=False)
-    username = db.Column(db.String(50), nullable=False)
+    username = db.Column(db.String(80), nullable=False)
+    bmc_ip = db.Column(db.String(80), nullable=False)
+    reason = db.Column(db.String(120), nullable=False)
 
-# Initialize the database
-with app.app_context():
-    db.create_all()
+    def __init__(self, username, bmc_ip, reason):
+        self.username = username
+        self.bmc_ip = bmc_ip
+        self.reason = reason
 
-# Basic Auth decorator
-def check_auth(username, password):
-    return username == 'admin' and password == 'admin'
-
-def authenticate():
-    """Sends a 401 response that enables basic auth"""
-    return Response(
-        'Could not verify your login!\n'
-        'You have to login with proper credentials', 401,
-        {'WWW-Authenticate': 'Basic realm="Login Required"'})
-
-def requires_auth(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        auth = request.authorization
-        if not auth or not check_auth(auth.username, auth.password):
-            return authenticate()
-        g.username = auth.username  # Store the authenticated user's username in `g`
-        return f(*args, **kwargs)
-    return decorated
+# Basic Authentication
+@auth.get_password
+def get_pw(username):
+    if username in users:
+        return users.get(username)
+    return None
 
 # Load servers from the server list files (one for each group)
 def load_servers(file_path):
     with open(file_path) as file:
-        servers = [line.strip().split(',')[:3] for line in file]
+        servers = [line.strip().split(',') for line in file]
     return servers
 
 # Function to get the BMC status using ipmitool
 def get_bmc_status(bmc_ip):
     try:
         result = subprocess.run(['ipmitool', '-I', 'lanplus', '-H', bmc_ip, '-U', 'admin', '-P', 'password', 'chassis', 'power', 'status'], capture_output=True, text=True)
-        if 'on' in result.stdout.lower():
+        if 'on' in result.stdout:
             return 'On'
-        elif 'off' in result.stdout.lower():
+        elif 'off' in result.stdout:
             return 'Off'
         else:
             return 'Unknown'
@@ -74,7 +65,7 @@ def check_kubelet_status(kube_ip):
         stdin, stdout, stderr = ssh.exec_command('systemctl is-active kubelet')
         kubelet_status = stdout.read().decode().strip()
         ssh.close()
-        return "Active" if kubelet_status == "active" else "Inactive"
+        return "active" if kubelet_status == "active" else "inactive"
     except Exception as e:
         return f'Error: {e}'
 
@@ -88,39 +79,33 @@ def power_cycle_server(bmc_ip):
 
 # Route to fetch BMC status dynamically
 @app.route('/check_bmc_status/<bmc_ip>', methods=['POST'])
-def check_bmc_status_route(bmc_ip):
+def check_bmc_status(bmc_ip):
     status = get_bmc_status(bmc_ip)
     return jsonify({'status': status})
 
-# Route to check Kubelet status dynamically
-@app.route('/check_kubelet_status/<kube_ip>', methods=['POST'])
-def check_kubelet_status_route(kube_ip):
-    status = check_kubelet_status(kube_ip)
-    return jsonify({'status': status})
-
-# Route to power cycle the server and provide a reason, saving to the database
+# Route to power cycle the server and provide a reason
 @app.route('/power_cycle/<bmc_ip>', methods=['POST'])
-@requires_auth
+@auth.login_required
 def power_cycle(bmc_ip):
-    reason = request.form.get('reason')  # Get reason from the form
-    username = g.username  # Get the authenticated username from `g`
-
-    # Save the reason and username to the SQLite database
-    new_action = PowerCycleAction(bmc_ip=bmc_ip, reason=reason, username=username)
-    db.session.add(new_action)
+    reason = request.form.get('reason')
+    result = power_cycle_server(bmc_ip)
+    
+    # Log the power cycle action
+    log_entry = PowerCycleLog(username=auth.username(), bmc_ip=bmc_ip, reason=reason)
+    db.session.add(log_entry)
     db.session.commit()
 
-    result = power_cycle_server(bmc_ip)  # Power cycle the server
-    return jsonify({'result': result, 'reason': reason, 'username': username})
+    return jsonify({'result': result})
 
 # Homepage route that loads and displays the server statuses
 @app.route('/')
-@requires_auth
+@auth.login_required
 def index():
     servers_group1 = load_servers('servers_group1.txt')
     servers_group2 = load_servers('servers_group2.txt')
     servers_group3 = load_servers('servers_group3.txt')
 
+    # Use ThreadPoolExecutor to run BMC and kubelet checks concurrently
     with ThreadPoolExecutor() as executor:
         for server in servers_group1 + servers_group2 + servers_group3:
             server_name, bmc_ip, kube_ip = server
@@ -130,5 +115,6 @@ def index():
     return render_template('index.html', servers_group1=servers_group1, servers_group2=servers_group2, servers_group3=servers_group3)
 
 if __name__ == '__main__':
+    db.create_all()  # Create tables in PostgreSQL
     app.run(debug=True)
 
