@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Management Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h1>Server Management Dashboard</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Server Name</th>
+                <th>BMC Status</th>
+                <th>Kubelet Status</th>
+                <th>Power Cycle</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for server in servers_group1 %}
+            <tr>
+                <td>{{ server[0] }}</td>
+                <td>
+                    <span id="bmc-status-{{ loop.index }}">{{ server[3] }}</span>
+                    <button onclick="checkBMCStatus('{{ server[1] }}', {{ loop.index }})">Check BMC</button>
+                </td>
+                <td>
+                    <span id="kubelet-status-{{ loop.index }}">{{ server[4] }}</span>
+                    <button onclick="checkKubeletStatus('{{ server[2] }}', {{ loop.index }})">Check Kubelet</button>
+                </td>
+                <td>
+                    <form action="/power_cycle/{{ server[1] }}" method="post">
+                        <select name="reason">
+                            <option value="Host can't be reached">Host can't be reached</option>
+                            <option value="Can't SSH into host">Can't SSH into host</option>
+                        </select>
+                        <button type="submit">Power Cycle</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <script>
+        function checkBMCStatus(bmc_ip, index) {
+            $.ajax({
+                url: '/check_bmc_status/' + bmc_ip,
+                type: 'POST',
+                success: function(data) {
+                    $('#bmc-status-' + index).text(data.status);
+                },
+                error: function(error) {
+                    console.log('Error:', error);
+                    alert('Failed to check BMC status.');
+                }
+            });
+        }
+
+        function checkKubeletStatus(kube_ip, index) {
+            $.ajax({
+                url: '/check_kubelet_status/' + kube_ip,
+                type: 'POST',
+                success: function(data) {
+                    $('#kubelet-status-' + index).text(data.status);
+                },
+                error: function(error) {
+                    console.log('Error:', error);
+                    alert('Failed to check Kubelet status.');
+                }
+            });
+        }
+    </script>
+</body>
+</html>
+

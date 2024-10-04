@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Management Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        table {
+            width: 80%;
+            margin: 20px auto;
+            border-collapse: collapse;
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: center;
+            border: 1px solid #ccc;
+        }
+
+        th {
+            background-color: #f4f4f4;
+            color: #555;
+        }
+
+        td {
+            color: #333;
+        }
+
+        button {
+            padding: 5px 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        select {
+            padding: 5px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+
+        form {
+            display: inline-block;
+        }
+
+        /* Center the table */
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+
+    </style>
+</head>
+<body>
+    <div>
+        <h1>Server Management Dashboard</h1>
+        <table>
+            <thead>
+                <tr>
+                    <th>Server Name</th>
+                    <th>BMC Status</th>
+                    <th>Kubelet Status</th>
+                    <th>Power Cycle</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for server in servers_group1 %}
+                <tr>
+                    <td>{{ server[0] }}</td>
+                    <td>
+                        <span id="bmc-status-{{ loop.index }}">{{ server[3] }}</span>
+                        <button onclick="checkBMCStatus('{{ server[1] }}', {{ loop.index }})">Check BMC</button>
+                    </td>
+                    <td>
+                        <span id="kubelet-status-{{ loop.index }}">{{ server[4] }}</span>
+                        <button onclick="checkKubeletStatus('{{ server[2] }}', {{ loop.index }})">Check Kubelet</button>
+                    </td>
+                    <td>
+                        <form action="/power_cycle/{{ server[1] }}" method="post">
+                            <select name="reason">
+                                <option value="Host can't be reached">Host can't be reached</option>
+                                <option value="Can't SSH into host">Can't SSH into host</option>
+                            </select>
+                            <button type="submit">Power Cycle</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        function checkBMCStatus(bmc_ip, index) {
+            $.ajax({
+                url: '/check_bmc_status/' + bmc_ip,
+                type: 'POST',
+                success: function(data) {
+                    $('#bmc-status-' + index).text(data.status);
+                },
+                error: function(error) {
+                    console.log('Error:', error);
+                    alert('Failed to check BMC status.');
+                }
+            });
+        }
+
+        function checkKubeletStatus(kube_ip, index) {
+            $.ajax({
+                url: '/check_kubelet_status/' + kube_ip,
+                type: 'POST',
+                success: function(data) {
+                    $('#kubelet-status-' + index).text(data.status);
+                },
+                error: function(error) {
+                    console.log('Error:', error);
+                    alert('Failed to check Kubelet status.');
+                }
+            });
+        }
+    </script>
+</body>
+</html>
+
