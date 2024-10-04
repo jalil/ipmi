@@ -1,0 +1,12 @@
+<td>
+    <form method="POST" action="{{ url_for('power_cycle', server_group='servers_group1.txt', bmc_ip=server[1]) }}">
+        <select name="reason" required>
+            <option value="">Select a reason</option>
+            <option value="Host can't be reached">Host can't be reached</option>
+            <option value="Can't SSH into host">Can't SSH into host</option>
+            <!-- Add more reasons as needed -->
+        </select>
+        <button type="submit" class="btn btn-warning btn-sm">Power Cycle</button>
+    </form>
+</td>
+
