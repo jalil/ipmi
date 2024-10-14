@@ -1,0 +1,2 @@
+config.load_incluster_config()
+    v1 = client.CoreV1Api()
