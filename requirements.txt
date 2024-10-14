@@ -1,0 +1,7 @@
+Flask==2.0.3
+Flask-SQLAlchemy==2.5.1
+Flask-Caching==1.10.1
+Flask-SimpleLogin==0.1.0
+paramiko==2.11.0
+kubernetes==18.20.0
+
