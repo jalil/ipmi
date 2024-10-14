@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Management Dashboard</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        .blue {
+            color: blue;
+        }
+        .red {
+            color: red;
+        }
+        .gray {
+            color: gray;
+        }
+    </style>
+</head>
+<body>
+    <h1>Server Management Dashboard</h1>
+
+    <h2>Group 1 Servers</h2>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Server Name</th>
+                <th>BMC Status</th>
+                <th>Kubelet Status</th>
+                <th>Cordon Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for server in servers_group1 %}
+            <tr id="server-{{ server[0] }}">
+                <td>{{ server[0] }}</td> <!-- Server Name -->
+                <td id="bmc-status-{{ server[0] }}" class="{{ server[3].color }}">{{ server[3].status }}</td> <!-- BMC Status -->
+                <td id="kubelet-status-{{ server[0] }}" class="{{ server[4].color }}">{{ server[4].status }}</td> <!-- Kubelet Status -->
+                <td id="cordon-status-{{ server[0] }}" class="{{ server[5].color }}">{{ server[5].status }}</td> <!-- Cordon Status -->
+                <td>
+                    <button onclick="checkBMCStatus('{{ server[1] }}', '{{ server[0] }}')">Check BMC Status</button>
+                    <button onclick="checkKubeletStatus('{{ server[2] }}', '{{ server[0] }}')">Check Kubelet Status</button>
+                    <button onclick="checkCordonStatus('{{ server[0] }}')">Check Cordon Status</button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <script>
+        function checkBMCStatus(bmc_ip, server_id) {
+            $.post("/check_bmc_status/" + bmc_ip, function(data) {
+                $('#bmc-status-' + server_id).text(data.status).attr('class', data.color);
+            });
+        }
+
+        function checkKubeletStatus(kube_ip, server_id) {
+            $.post("/check_kubelet_status/" + kube_ip, function(data) {
+                $('#kubelet-status-' + server_id).text(data.status).attr('class', data.color);
+            });
+        }
+
+        function checkCordonStatus(node_name) {
+            $.post("/check_cordon_status/" + node_name, function(data) {
+                $('#cordon-status-' + node_name).text(data.status).attr('class', data.color);
+            });
+        }
+    </script>
+</body>
+</html>
+

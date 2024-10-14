@@ -1,0 +1,61 @@
+
+# Function to get the BMC status using ipmitool
+def get_bmc_status(bmc_ip):
+    try:
+        result = subprocess.run(['ipmitool', '-I', 'lanplus', '-H', bmc_ip, '-U', 'admin', '-P', 'password', 'chassis', 'power', 'status'], capture_output=True, text=True)
+        if 'on' in result.stdout:
+            return {'status': 'On', 'color': 'blue'}
+        elif 'off' in result.stdout:
+            return {'status': 'Off', 'color': 'red'}
+        else:
+            return {'status': 'Unknown', 'color': 'gray'}
+    except Exception as e:
+        return {'status': f'Error: {e}', 'color': 'gray'}
+
+# Function to check if kubelet is running on a given Kubernetes IP
+def check_kubelet_status(kube_ip):
+    try:
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(kube_ip, username='user', password='password')
+        stdin, stdout, stderr = ssh.exec_command('systemctl is-active kubelet')
+        kubelet_status = stdout.read().decode().strip()
+        ssh.close()
+        if kubelet_status == "active":
+            return {'status': 'active', 'color': 'blue'}
+        else:
+            return {'status': 'inactive', 'color': 'red'}
+    except Exception as e:
+        return {'status': f'Error: {e}', 'color': 'gray'}
+
+
+
+# Function to get the BMC status using ipmitool
+def get_bmc_status(bmc_ip):
+    try:
+        result = subprocess.run(['ipmitool', '-I', 'lanplus', '-H', bmc_ip, '-U', 'admin', '-P', 'password', 'chassis', 'power', 'status'], capture_output=True, text=True)
+        if 'on' in result.stdout:
+            return {'status': 'On', 'color': 'blue'}
+        elif 'off' in result.stdout:
+            return {'status': 'Off', 'color': 'red'}
+        else:
+            return {'status': 'Unknown', 'color': 'gray'}
+    except Exception as e:
+        return {'status': f'Error: {e}', 'color': 'gray'}
+
+# Function to check if kubelet is running on a given Kubernetes IP
+def check_kubelet_status(kube_ip):
+    try:
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(kube_ip, username='user', password='password')
+        stdin, stdout, stderr = ssh.exec_command('systemctl is-active kubelet')
+        kubelet_status = stdout.read().decode().strip()
+        ssh.close()
+        if kubelet_status == "active":
+            return {'status': 'active', 'color': 'blue'}
+        else:
+            return {'status': 'inactive', 'color': 'red'}
+    except Exception as e:
+        return {'status': f'Error: {e}', 'color': 'gray'}
+
