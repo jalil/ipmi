@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Power Cycle Button with Countdown</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            text-align: center;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        #countdown {
+            font-size: 18px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <button id="powerCycleBtn" onclick="powerCycle()">Power Cycle</button>
+        <p id="message"></p>
+        <p id="countdown"></p>
+    </div>
+
+    <script>
+        let countdownInterval;
+
+        function powerCycle() {
+            fetch('/', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('message').textContent = data.message;
+                    document.getElementById('powerCycleBtn').disabled = data.disabled;
+                    if (data.disabled) {
+                        startCountdown(data.remainingTime);
+                    }
+                });
+        }
+
+        function startCountdown(remainingTime) {
+            clearInterval(countdownInterval);
+            updateCountdown(remainingTime);
+
+            countdownInterval = setInterval(() => {
+                remainingTime--;
+                if (remainingTime <= 0) {
+                    clearInterval(countdownInterval);
+                    document.getElementById('powerCycleBtn').disabled = false;
+                    document.getElementById('message').textContent = '';
+                    document.getElementById('countdown').textContent = '';
+                } else {
+                    updateCountdown(remainingTime);
+                }
+            }, 1000);
+        }
+
+        function updateCountdown(remainingTime) {
+            const minutes = Math.floor(remainingTime / 60);
+            const seconds = remainingTime % 60;
+            document.getElementById('countdown').textContent = 
+                `Time remaining: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+    </script>
+</body>
+</html>
