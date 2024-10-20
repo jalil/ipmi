@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Form Submit with Powercycle Message</title>
+    <style>
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        button:disabled {
+            background-color: grey;
+            cursor: not-allowed;
+        }
+        #message {
+            font-size: 18px;
+            margin-top: 10px;
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <form id="myForm">
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="name" required>
+        <br><br>
+        <button type="submit" id="submitBtn">Submit</button>
+        <p id="message"></p>
+    </form>
+
+    <script>
+        let countdownInterval;
+
+        // Handle form submission
+        document.getElementById('myForm').addEventListener('submit', function(event) {
+            event.preventDefault();  // Prevent the form from submitting
+            disableButton();
+        });
+
+        function disableButton() {
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+
+            let remainingTime = 60; // 10 minutes in seconds
+            displayPowercycleMessage();
+            
+            // Re-enable button after 10 minutes
+            countdownInterval = setTimeout(() => {
+                submitBtn.disabled = false;
+                document.getElementById('message').textContent = '';
+            }, remainingTime * 100);  // 10 minutes
+        }
+
+        function displayPowercycleMessage() {
+            document.getElementById('message').textContent = 'Powercycle activated';
+        }
+    </script>
+</body>
+</html>
+
