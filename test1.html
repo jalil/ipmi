@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Form Submit with Powercycle Select Option</title>
+    <style>
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        button:disabled {
+            background-color: grey;
+            cursor: not-allowed;
+        }
+        #message {
+            font-size: 18px;
+            margin-top: 10px;
+            color: green;
+        }
+    </style>
+</head>
+<body>
+    <form id="myForm">
+        <label for="action">Select Action:</label>
+        <select id="action" name="action" required>
+            <option value="" disabled selected>Select an action</option>
+            <option value="Powercycle">Powercycle</option>
+            <option value="Shutdown">Shutdown</option>
+            <option value="Restart">Restart</option>
+        </select>
+        <br><br>
+        <button type="submit" id="submitBtn">Submit</button>
+        <p id="message"></p>
+    </form>
+
+    <script>
+        let countdownInterval;
+
+        // Main function to handle form submission
+        function handleFormSubmission(formId, submitButtonId, messageId, disableTime) {
+            document.getElementById(formId).addEventListener('submit', function(event) {
+                event.preventDefault();  // Prevent the form from submitting
+                disableButton(submitButtonId, messageId, disableTime);
+            });
+        }
+
+        // Function to disable the button and start the timeout
+        function disableButton(submitButtonId, messageId, disableTime) {
+            const submitBtn = document.getElementById(submitButtonId);
+            submitBtn.disabled = true;
+
+            const selectedAction = document.getElementById('action').value;
+            document.getElementById(messageId).textContent = `${selectedAction} activated`;
+
+            // Re-enable the button after specified disableTime (in seconds)
+            countdownInterval = setTimeout(() => {
+                submitBtn.disabled = false;
+                document.getElementById(messageId).textContent = '';
+            }, disableTime * 1000);
+        }
+
+        // Initialize the form handler
+        handleFormSubmission('myForm', 'submitBtn', 'message', 600); // 10 minutes = 600 seconds
+    </script>
+</body>
+</html>
+
