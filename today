@@ -1,0 +1,38 @@
+{% for server in servers %}
+<form id="powerCycleForm" method="POST" action="/power_cycle" onsubmit="validateForm(event)">
+    <select id="reason_{{ loop.index }}" name="reason" onchange="checkReason({{ loop.index }})">
+        <option disabled selected>PICK A REASON</option>
+        <option value="Host Unreachable">Host Unreachable</option>
+        <option value="Host NOT THERE">NOT THERE</option>
+        <option value="Other">Other</option>
+    </select>
+
+    <!-- Textarea initially hidden -->
+    <div id="otherReasonContainer_{{ loop.index }}" style="display:none;">
+        <textarea name="otherReason_{{ loop.index }}" rows="4" cols="50" placeholder="Enter reason for power cycle"></textarea>
+    </div>
+    <br>
+    <button type="submit" class="button" id="powerCycleBtn">Power Cycle</button>
+</form>
+{% endfor %}
+
+
+
+
+
+
+
+
+
+function checkReason(index) {
+    var reason = document.getElementById('reason_' + index).value;
+    var otherReasonContainer = document.getElementById('otherReasonContainer_' + index);
+    
+    // If "Other" is selected, show the textarea
+    if (reason === 'Other') {
+        otherReasonContainer.style.display = 'block'; // Show textarea
+    } else {
+        otherReasonContainer.style.display = 'none';  // Hide textarea
+    }
+}
+
