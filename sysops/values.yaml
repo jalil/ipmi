@@ -1,0 +1,20 @@
+serviceAccount:
+  name: node-cordon-sa
+  namespace: default
+
+role:
+  name: cordon-role
+  namespace: default
+  rules:
+    - apiGroups: [""]
+      resources: ["nodes"]
+      verbs: ["patch"]
+
+roleBinding:
+  name: cordon-role-binding
+  namespace: default
+  roleRef:
+    kind: Role
+    name: cordon-role
+    apiGroup: rbac.authorization.k8s.io
+
